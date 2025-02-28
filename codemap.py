@@ -108,10 +108,10 @@ class CodeMap:
  
                 # Draw column headers
                 stdscr.addstr(1, 0, "Name".ljust(40))
-                stdscr.addstr(1, 40, "Lines".rjust(8))
-                stdscr.addstr(1, 48, "Code".rjust(8))
-                stdscr.addstr(1, 56, "Blank".rjust(8))
-                stdscr.addstr(1, 64, "Comment".rjust(8))
+                stdscr.addstr(1, 40, "Lines".rjust(12))
+                stdscr.addstr(1, 52, "Code".rjust(12))
+                stdscr.addstr(1, 64, "Blank".rjust(12))
+                stdscr.addstr(1, 76, "Comment".rjust(12))
 
                 # Draw entries
                 visible_entries = self.entries[self.scroll_position:self.scroll_position + height - 3]
@@ -124,10 +124,10 @@ class CodeMap:
                         stdscr.addstr(y, 0, name.ljust(40), style | curses.color_pair(2))
                     else:  # File
                         stdscr.addstr(y, 0, name.ljust(40), style | curses.color_pair(1))
-                        stdscr.addstr(y, 40, FileStats.size_str(stats.lines).rjust(8), style)
-                        stdscr.addstr(y, 48, FileStats.size_str(stats.code_lines).rjust(8), style)
-                        stdscr.addstr(y, 56, FileStats.size_str(stats.blank_lines).rjust(8), style)
-                        stdscr.addstr(y, 64, FileStats.size_str(stats.comment_lines).rjust(8), style)
+                        stdscr.addstr(y, 40, FileStats.size_str(stats.lines).rjust(12), style)
+                        stdscr.addstr(y, 52, FileStats.size_str(stats.code_lines).rjust(12), style)
+                        stdscr.addstr(y, 64, FileStats.size_str(stats.blank_lines).rjust(12), style)
+                        stdscr.addstr(y, 76, FileStats.size_str(stats.comment_lines).rjust(12), style)
 
                 stdscr.refresh()
 
