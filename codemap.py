@@ -73,9 +73,6 @@ class CodeMap:
         self.entries = []
         
         # Add parent directory entry if not in root
-        if path != path.parent:
-            self.entries.append(("..", None))
-
     
         # Run scc on the entire directory
         overall_stats = self.count_file_lines(path)
@@ -87,6 +84,10 @@ class CodeMap:
             entry_path = pathlib.Path(entry.path)
             self.entries.append((entry_path.name, self.count_file_lines(entry_path) ))
         
+        self.entries.sort(key=lambda x: x[1].code_lines, reverse=True)
+        if path != path.parent:
+            self.entries.insert(0, ("..", FileStats()))
+
 
     def run(self, stdscr: curses.window) -> None:
         try:
@@ -173,6 +174,4 @@ def main():
         print("\nExiting...")
 
 if __name__ == "__main__":
-    main() 
-    #code_map = CodeMap()
-    #code_map.scan_directory(pathlib.Path.cwd())
+    main()
