@@ -88,6 +88,38 @@ class CodeMap:
         if path != path.parent:
             self.entries.insert(0, ("..", FileStats()))
 
+    def add_to_ignore_file(self, item_name: str) -> str:
+        """
+        Add the specified item to the .ignore file in the current directory.
+        Returns a message indicating the result of the operation.
+        """
+        if item_name in [".", ".."]:
+            return f"Cannot add '{item_name}' to .ignore file"
+        
+        ignore_path = self.current_path / ".ignore"
+        
+        # Check if the item already exists in the .ignore file
+        if ignore_path.exists():
+            with open(ignore_path, 'r') as f:
+                existing_entries = [line.strip() for line in f.readlines()]
+                if item_name in existing_entries:
+                    return f"'{item_name}' is already in .ignore file"
+        
+        # Append the item to the .ignore file
+        with open(ignore_path, 'a+') as f:
+            # Add a newline at the beginning if the file is not empty and doesn't end with a newline
+            if ignore_path.exists() and ignore_path.stat().st_size > 0:
+                f.seek(0, os.SEEK_END)
+                if f.tell() > 0:
+                    f.seek(f.tell() - 1, os.SEEK_SET)
+                    last_char = f.read(1)
+                    if last_char != '\n':
+                        f.write('\n')
+            
+            f.write(f"{item_name}\n")
+        self.stats_cache = {}
+        self.scan_directory(self.current_path)
+        return f"Added '{item_name}' to .ignore file"
 
     def run(self, stdscr: curses.window) -> None:
         try:
@@ -95,8 +127,11 @@ class CodeMap:
             curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
             curses.init_pair(2, curses.COLOR_BLUE, curses.COLOR_BLACK)
             curses.init_pair(3, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+            curses.init_pair(4, curses.COLOR_RED, curses.COLOR_BLACK)  # For status messages
 
             self.scan_directory(self.current_path)
+            status_message = ""
+            status_timeout = 0
 
             while True:
                 stdscr.clear()
@@ -114,7 +149,7 @@ class CodeMap:
                 stdscr.addstr(1, 76, "Comment".rjust(12))
 
                 # Draw entries
-                visible_entries = self.entries[self.scroll_position:self.scroll_position + height - 3]
+                visible_entries = self.entries[self.scroll_position:self.scroll_position + height - 4]  # Leave room for status
                 for i, (name, stats) in enumerate(visible_entries):
                     y = i + 2
                     is_selected = i + self.scroll_position == self.selected_index
@@ -128,6 +163,18 @@ class CodeMap:
                         stdscr.addstr(y, 52, FileStats.size_str(stats.code_lines).rjust(12), style)
                         stdscr.addstr(y, 64, FileStats.size_str(stats.blank_lines).rjust(12), style)
                         stdscr.addstr(y, 76, FileStats.size_str(stats.comment_lines).rjust(12), style)
+
+                # Display status message if available
+                if status_message and status_timeout > 0:
+                    status_timeout -= 1
+                    # Fix: Ensure the status message doesn't exceed the terminal width
+                    # The error occurs because width includes the last column which can't be written to
+                    # without causing a scroll/wrap
+                    try:
+                        stdscr.addstr(height - 1, 0, status_message[:width-1].ljust(width-1), curses.color_pair(4))
+                    except curses.error:
+                        # Handle any potential curses errors safely
+                        pass
 
                 stdscr.refresh()
 
@@ -143,8 +190,8 @@ class CodeMap:
                         self.scroll_position = self.selected_index
                 elif key == curses.KEY_DOWN and self.selected_index < len(self.entries) - 1:
                     self.selected_index += 1
-                    if self.selected_index >= self.scroll_position + height - 3:
-                        self.scroll_position = self.selected_index - (height - 4)
+                    if self.selected_index >= self.scroll_position + height - 4:  # Adjusted for status line
+                        self.scroll_position = self.selected_index - (height - 5)
                 elif key in (curses.KEY_ENTER, 10, 13):
                     if self.selected_index < len(self.entries):
                         name, _ = self.entries[self.selected_index]
@@ -158,6 +205,11 @@ class CodeMap:
                         self.scan_directory(self.current_path)
                         self.selected_index = 0
                         self.scroll_position = 0
+                elif key == ord('i'):  # Handle 'i' key for adding to .ignore file
+                    if self.selected_index < len(self.entries):
+                        name, _ = self.entries[self.selected_index]
+                        status_message = self.add_to_ignore_file(name)
+                        status_timeout = 30  # Display message for about 30 refresh cycles
         except KeyboardInterrupt:
             # Handle Ctrl+C gracefully
             pass
